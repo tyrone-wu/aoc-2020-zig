@@ -1,46 +1,57 @@
 const std = @import("std");
-const Allocator = std.mem.Allocator;
-const List = std.ArrayList;
-const Map = std.AutoHashMap;
-const StrMap = std.StringHashMap;
-const BitSet = std.DynamicBitSet;
-
 const util = @import("util.zig");
+
+const Map = std.AutoHashMap;
+
 const gpa = util.gpa;
 
+const tokenizeAny = std.mem.tokenizeAny;
+const parseInt = std.fmt.parseInt;
+const print = std.debug.print;
+
 const data = @embedFile("data/day15.txt");
+const data_test = @embedFile("data/day15.test.txt");
 
 pub fn main() !void {
-    
+    const p1_test = try partOne(data_test);
+    const p2_test = try partTwo(data_test);
+    print("Test:\n  part 1: {d}\n  part 2: {d}\n\n", .{ p1_test, p2_test });
+
+    const p1 = try partOne(data);
+    const p2 = try partTwo(data);
+    print("Puzzle:\n  part 1: {d}\n  part 2: {d}\n", .{ p1, p2 });
 }
 
-// Useful stdlib functions
-const tokenizeAny = std.mem.tokenizeAny;
-const tokenizeSeq = std.mem.tokenizeSequence;
-const tokenizeSca = std.mem.tokenizeScalar;
-const splitAny = std.mem.splitAny;
-const splitSeq = std.mem.splitSequence;
-const splitSca = std.mem.splitScalar;
-const indexOf = std.mem.indexOfScalar;
-const indexOfAny = std.mem.indexOfAny;
-const indexOfStr = std.mem.indexOfPosLinear;
-const lastIndexOf = std.mem.lastIndexOfScalar;
-const lastIndexOfAny = std.mem.lastIndexOfAny;
-const lastIndexOfStr = std.mem.lastIndexOfLinear;
-const trim = std.mem.trim;
-const sliceMin = std.mem.min;
-const sliceMax = std.mem.max;
+fn partOne(input: []const u8) !u32 {
+    return try playMemoryGame(input, 2020);
+}
 
-const parseInt = std.fmt.parseInt;
-const parseFloat = std.fmt.parseFloat;
+fn partTwo(input: []const u8) !u32 {
+    return try playMemoryGame(input, 30000000);
+}
 
-const print = std.debug.print;
-const assert = std.debug.assert;
+fn playMemoryGame(input: []const u8, end: u32) !u32 {
+    var numbers, var last_spoken = try parseInput(input);
+    defer numbers.deinit();
 
-const sort = std.sort.block;
-const asc = std.sort.asc;
-const desc = std.sort.desc;
+    var last_spoken_turn: ?u32 = null;
+    var turn: u32 = numbers.count() + 1;
+    while (turn <= end) : (turn += 1) {
+        last_spoken = if (last_spoken_turn) |t| numbers.get(last_spoken).? - t else 0;
+        last_spoken_turn = numbers.get(last_spoken);
+        try numbers.put(last_spoken, turn);
+    }
+    return last_spoken;
+}
 
-// Generated from template/template.zig.
-// Run `zig build generate` to update.
-// Only unmodified days will be updated.
+fn parseInput(input: []const u8) !struct { Map(u32, u32), u32 } {
+    var numbers = Map(u32, u32).init(gpa);
+    var tokens = tokenizeAny(u8, input, ",\n");
+    var i: u32 = 1;
+    var last_spoken: u32 = 0;
+    while (tokens.next()) |num_str| : (i += 1) {
+        last_spoken = try parseInt(u32, num_str, 10);
+        try numbers.put(last_spoken, i);
+    }
+    return .{ numbers, last_spoken };
+}

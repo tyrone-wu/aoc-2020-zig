@@ -1,46 +1,52 @@
 const std = @import("std");
-const Allocator = std.mem.Allocator;
-const List = std.ArrayList;
-const Map = std.AutoHashMap;
-const StrMap = std.StringHashMap;
-const BitSet = std.DynamicBitSet;
 
-const util = @import("util.zig");
-const gpa = util.gpa;
+const splitSca = std.mem.splitScalar;
+const parseInt = std.fmt.parseInt;
+const print = std.debug.print;
 
 const data = @embedFile("data/day25.txt");
+const data_test = @embedFile("data/day25.test.txt");
 
 pub fn main() !void {
-    
+    const p1_test = try partOne(data_test);
+    print("Test:\n  part 1: {d}\n\n", .{p1_test});
+
+    const p1 = try partOne(data);
+    print("Puzzle:\n  part 1: {d}\n", .{p1});
 }
 
-// Useful stdlib functions
-const tokenizeAny = std.mem.tokenizeAny;
-const tokenizeSeq = std.mem.tokenizeSequence;
-const tokenizeSca = std.mem.tokenizeScalar;
-const splitAny = std.mem.splitAny;
-const splitSeq = std.mem.splitSequence;
-const splitSca = std.mem.splitScalar;
-const indexOf = std.mem.indexOfScalar;
-const indexOfAny = std.mem.indexOfAny;
-const indexOfStr = std.mem.indexOfPosLinear;
-const lastIndexOf = std.mem.lastIndexOfScalar;
-const lastIndexOfAny = std.mem.lastIndexOfAny;
-const lastIndexOfStr = std.mem.lastIndexOfLinear;
-const trim = std.mem.trim;
-const sliceMin = std.mem.min;
-const sliceMax = std.mem.max;
+fn partOne(input: []const u8) !u64 {
+    var tokens = splitSca(u8, input, '\n');
+    const card_pub = try parseInt(u64, tokens.next().?, 10);
+    const door_pub = try parseInt(u64, tokens.next().?, 10);
 
-const parseInt = std.fmt.parseInt;
-const parseFloat = std.fmt.parseFloat;
+    const card_loop_size = findLoopSize(card_pub);
+    const door_loop_size = findLoopSize(door_pub);
 
-const print = std.debug.print;
-const assert = std.debug.assert;
+    const card_key = encryptionKey(card_pub, door_loop_size);
+    const door_key = encryptionKey(door_pub, card_loop_size);
+    if (card_key != door_key)
+        return error.KeysNotEqual;
 
-const sort = std.sort.block;
-const asc = std.sort.asc;
-const desc = std.sort.desc;
+    return door_key;
+}
 
-// Generated from template/template.zig.
-// Run `zig build generate` to update.
-// Only unmodified days will be updated.
+fn encryptionKey(subject_number: u64, loop_size: u64) u64 {
+    var value: u64 = 1;
+    for (0..loop_size) |_| {
+        value *= subject_number;
+        value = @rem(value, 20201227);
+    }
+    return value;
+}
+
+fn findLoopSize(public_key: u64) u64 {
+    const subject_number: u64 = 7;
+    var loop_size: u64 = 0;
+    var value: u64 = 1;
+    while (value != public_key) : (loop_size += 1) {
+        value *= subject_number;
+        value = @rem(value, 20201227);
+    }
+    return loop_size;
+}

@@ -1,46 +1,76 @@
 const std = @import("std");
-const Allocator = std.mem.Allocator;
-const List = std.ArrayList;
-const Map = std.AutoHashMap;
-const StrMap = std.StringHashMap;
-const BitSet = std.DynamicBitSet;
-
 const util = @import("util.zig");
+
+const Map = std.AutoHashMap;
+
 const gpa = util.gpa;
 
-const data = @embedFile("data/day01.txt");
-
-pub fn main() !void {
-    
-}
-
-// Useful stdlib functions
-const tokenizeAny = std.mem.tokenizeAny;
-const tokenizeSeq = std.mem.tokenizeSequence;
 const tokenizeSca = std.mem.tokenizeScalar;
-const splitAny = std.mem.splitAny;
-const splitSeq = std.mem.splitSequence;
-const splitSca = std.mem.splitScalar;
-const indexOf = std.mem.indexOfScalar;
-const indexOfAny = std.mem.indexOfAny;
-const indexOfStr = std.mem.indexOfPosLinear;
-const lastIndexOf = std.mem.lastIndexOfScalar;
-const lastIndexOfAny = std.mem.lastIndexOfAny;
-const lastIndexOfStr = std.mem.lastIndexOfLinear;
-const trim = std.mem.trim;
-const sliceMin = std.mem.min;
-const sliceMax = std.mem.max;
-
 const parseInt = std.fmt.parseInt;
-const parseFloat = std.fmt.parseFloat;
-
 const print = std.debug.print;
 const assert = std.debug.assert;
 
-const sort = std.sort.block;
-const asc = std.sort.asc;
-const desc = std.sort.desc;
+const data = @embedFile("data/day01.txt");
+const data_test = @embedFile("data/day01.test.txt");
 
-// Generated from template/template.zig.
-// Run `zig build generate` to update.
-// Only unmodified days will be updated.
+pub fn main() !void {
+    const p1_test = try partOne(data_test);
+    assert(p1_test == 514579);
+    const p1 = try partOne(data);
+
+    const p2_test = try partTwo(data_test);
+    assert(p2_test == 241861950);
+    const p2 = try partTwo(data);
+
+    print("part 1: {d}\npart 2: {d}\n", .{ p1, p2 });
+}
+
+fn partOne(input: []const u8) !u32 {
+    const target: u32 = 2020;
+    var expense_report = Map(u32, void).init(gpa);
+    defer expense_report.deinit();
+
+    var lines = tokenizeSca(u8, input, '\n');
+    while (lines.next()) |line| {
+        const expense = try parseInt(u32, line, 10);
+        try expense_report.put(expense, {});
+    }
+
+    const a, const b = try twoSum(target, expense_report, null);
+    return a * b;
+}
+
+fn partTwo(input: []const u8) !u32 {
+    const target_main: u32 = 2020;
+    var expense_report = Map(u32, void).init(gpa);
+    defer expense_report.deinit();
+
+    var lines = tokenizeSca(u8, input, '\n');
+    while (lines.next()) |line| {
+        const expense = try parseInt(u32, line, 10);
+        const target = target_main - expense;
+        const a, const b = twoSum(target, expense_report, expense) catch {
+            try expense_report.put(expense, {});
+            continue;
+        };
+        return expense * a * b;
+    }
+    return error.NoSolution;
+}
+
+fn twoSum(target: u32, expense_report: Map(u32, void), ignore: ?u32) ![2]u32 {
+    var it = expense_report.keyIterator();
+    while (it.next()) |expense| {
+        if (target < expense.*)
+            continue;
+
+        const other = target - expense.*;
+        if (ignore != null and ((expense.* == ignore) or (other == ignore)))
+            continue;
+
+        if (expense_report.contains(other)) {
+            return .{ expense.*, other };
+        }
+    }
+    return error.NoSolution;
+}
